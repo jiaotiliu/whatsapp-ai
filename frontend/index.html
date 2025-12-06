@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>WhatsApp AI Setup</title>
+</head>
+<body>
+  <h1>WhatsApp AI Micro-Service Setup</h1>
+
+  <form id="setupForm">
+    <input id="name" placeholder="Your name" required>
+    <input id="key" placeholder="WhatsApp API Key" required>
+    <button>Save</button>
+  </form>
+
+  <script>
+    document.getElementById("setupForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      alert("Saved (API endpoint coming soon)");
+    });
+  </script>
+
+</body>
+</html>
