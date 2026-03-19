@@ -1,14 +1,23 @@
 {
   "name": "whatsapp-ai-microservice",
-  "version": "1.0.0",
-  "description": "",
+  "version": "2.0.0",
+  "description": "Production-ready WhatsApp AI assistant with text, voice, and image understanding.",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "dev": "NODE_ENV=development node index.js",
+    "test": "node --test",
+    "check": "node --check index.js && node --check src/config.js && node --check src/db.js && node --check src/logger.js && node --check src/routes/webhook.js && node --check src/services/openai.js && node --check src/services/whatsapp.js"
   },
-  "keywords": [],
+  "keywords": [
+    "whatsapp",
+    "openai",
+    "voice",
+    "image-recognition",
+    "express"
+  ],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "type": "commonjs",
   "dependencies": {
     "axios": "^1.13.2",
