@@ -1,47 +1,103 @@
-process.env = {};
-require("dotenv").config({ override: true });
-
 const express = require("express");
-const bodyParser = require("body-parser");
 const config = require("./src/config");
-
-const webhookRoutes = require("./src/routes/webhook");
+const logger = require("./src/logger");
+const { initialize } = require("./src/db");
+const { processWebhookPayload } = require("./src/routes/webhook");
+const { verifySignature, verifyWebhookToken } = require("./src/services/whatsapp");
 
 const app = express();
 
-/* ✅ IMPORTANT: Meta sends JSON with special signatures */
-app.use(bodyParser.json({
-  verify: (req, res, buf) => {
-    req.rawBody = buf;
-  }
-}));
+app.disable("x-powered-by");
+app.use(
+  express.json({
+    limit: "20mb",
+    verify: (req, _res, buffer) => {
+      req.rawBody = buffer;
+    }
+  })
+);
 
-/* ✅ ROOT HEALTH CHECK */
-app.get("/", (req, res) => {
-  res.send("WhatsApp AI Microservice is running ✅");
+app.get("/", (_req, res) => {
+  res.json({
+    service: "whatsapp-ai-microservice",
+    status: "ok",
+    features: ["text", "openai-whisper", "openai-tts", "openai-vision"]
+  });
 });
 
-/* ✅ META WEBHOOK VERIFICATION (THIS WAS FAILING) */
+app.get("/healthz", (_req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
+app.get("/readyz", async (_req, res) => {
+  try {
+    await initialize();
+    res.status(200).json({ status: "ready" });
+  } catch (error) {
+    logger.error("Readiness check failed", { error });
+    res.status(500).json({ status: "error" });
+  }
+});
+
 app.get("/webhook", (req, res) => {
   const mode = req.query["hub.mode"];
   const token = req.query["hub.verify_token"];
   const challenge = req.query["hub.challenge"];
 
-  console.log("Webhook verification attempt:", mode, token);
-
-  if (mode === "subscribe" && token === "whatsapp123") {
-    console.log("✅ Meta Webhook Verified!");
-    return res.status(200).send(challenge);
-  } else {
-    console.log("❌ Meta Webhook Verification Failed");
-    return res.sendStatus(403);
+  if (!verifyWebhookToken(mode, token)) {
+    logger.warn("Webhook verification failed", { mode });
+    res.sendStatus(403);
+    return;
   }
+
+  logger.info("Webhook verification succeeded");
+  res.status(200).send(challenge);
 });
 
-/* ✅ INCOMING WHATSAPP MESSAGES */
-app.use("/webhook", webhookRoutes);
+app.post("/webhook", (req, res) => {
+  const signature = req.header("x-hub-signature-256");
 
-/* ✅ SERVER START */
-app.listen(config.port, () => {
-  console.log(`✅ Server running on port ${config.port}`);
+  if (!verifySignature(req.rawBody, signature)) {
+    logger.warn("Rejected webhook due to invalid signature");
+    res.sendStatus(403);
+    return;
+  }
+
+  res.sendStatus(200);
+
+  processWebhookPayload(req.body).catch((error) => {
+    logger.error("Unhandled webhook processing error", { error });
+  });
+});
+
+app.use((error, _req, res, _next) => {
+  logger.error("Unhandled express error", { error });
+  res.status(500).json({ error: "internal_server_error" });
+});
+
+async function start() {
+  await initialize();
+
+  const server = app.listen(config.port, () => {
+    logger.info("Server started", {
+      nodeEnv: config.nodeEnv,
+      port: config.port
+    });
+  });
+
+  const shutdown = (signal) => {
+    logger.info("Received shutdown signal", { signal });
+    server.close(() => {
+      logger.info("HTTP server closed");
+      process.exit(0);
+    });
+  };
+
+  process.on("SIGTERM", shutdown);
+  process.on("SIGINT", shutdown);
+}
+
+start().catch((error) => {
+  logger.error("Failed to boot service", { error });
+  process.exit(1);
 });

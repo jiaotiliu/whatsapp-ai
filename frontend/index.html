@@ -1,24 +1,49 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <title>WhatsApp AI Setup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WhatsApp AI Service</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0b141a;
+      color: #e9edef;
+      margin: 0;
+      padding: 48px 24px;
+    }
+    .card {
+      max-width: 900px;
+      margin: 0 auto;
+      background: #202c33;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+    }
+    h1 { margin-top: 0; }
+    code {
+      background: #111b21;
+      padding: 2px 8px;
+      border-radius: 6px;
+      color: #7ae582;
+    }
+    ul { line-height: 1.8; }
+  </style>
 </head>
 <body>
-  <h1>WhatsApp AI Micro-Service Setup</h1>
-
-  <form id="setupForm">
-    <input id="name" placeholder="Your name" required>
-    <input id="key" placeholder="WhatsApp API Key" required>
-    <button>Save</button>
-  </form>
-
-  <script>
-    document.getElementById("setupForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      alert("Saved (API endpoint coming soon)");
-    });
-  </script>
-
+  <section class="card">
+    <h1>WhatsApp AI Service 已就绪</h1>
+    <p>该服务当前的 AI 能力分工如下：</p>
+    <ul>
+      <li>文字消息：OpenAI 对话模型</li>
+      <li>语音识别：OpenAI Whisper</li>
+      <li>语音回复：OpenAI Text-to-Speech</li>
+      <li>图片识别：OpenAI Vision</li>
+      <li>健康检查：<code>/healthz</code>、<code>/readyz</code></li>
+      <li>Webhook 验证：<code>/webhook</code></li>
+    </ul>
+    <p>Meta / WhatsApp 仅负责消息收发与媒体下载，识别和理解均由 OpenAI 处理。</p>
+    <p>请按照仓库根目录中的 README 和 docs/DEPLOYMENT.md 完成生产部署。</p>
+  </section>
 </body>
 </html>

@@ -1,201 +1,127 @@
-# WhatsApp AI Microservice 🤖💬
+# WhatsApp AI Microservice
 
-A production-ready **WhatsApp AI Microservice** built with **Node.js, Meta WhatsApp Cloud API, and OpenAI**. This service receives incoming WhatsApp messages via webhooks, generates intelligent AI replies using OpenAI, and sends responses back to users automatically.
+一个可生产部署的 WhatsApp AI 微服务，支持：
 
-> Built for real-world use
-> Works with Meta WhatsApp Cloud API
-> AI-powered using OpenAI
-> Ngrok-enabled for local webhook testing
+- 文本消息理解与自动回复
+- 语音消息识别（由 OpenAI Whisper 处理）
+- 语音消息自动语音回复（Text-to-Speech）
+- 图片识别与图片内容理解（由 OpenAI Vision 处理）
+- Webhook 签名校验
+- 健康检查与就绪检查
+- Docker 生产部署
 
----
+## 功能特性
 
-## 🚀 Features
+### 1. 文本消息
+用户发送文字后，服务会调用 OpenAI 生成自然语言回复。
 
-* Real-time WhatsApp message handling
-* AI-generated replies using OpenAI
-* Meta Cloud API integration (no 3rd-party BSP)
-* Secure webhook verification
-* Production-grade Express server
-* Ngrok support for local development
-* Environment-based secret management
+### 2. 语音消息
+用户发送 WhatsApp 语音后，服务会：
+1. 从 WhatsApp Cloud API 下载语音媒体
+2. 使用 **OpenAI Whisper** 转写成文字
+3. 将转写结果送入 OpenAI 对话模型生成回答
+4. 返回文字 + AI 语音消息
 
----
+### 3. 图片消息
+用户发送图片后，服务会：
+1. 从 WhatsApp Cloud API 下载图片媒体
+2. 使用 **OpenAI Vision** 识别图片中的主体、文字与场景
+3. 再把识别结果送入 OpenAI 对话模型生成文字回复
 
-## 🧠 Tech Stack
+### 4. 职责划分
+- **WhatsApp / Meta API**：只负责 webhook、媒体下载、消息发送
+- **OpenAI**：负责文本生成、Whisper 语音识别、Vision 图片理解、TTS 语音合成
 
-* **Backend:** Node.js, Express
-* **AI Engine:** OpenAI API
-* **Messaging:** Meta WhatsApp Cloud API
-* **Tunneling:** Ngrok
-* **Config & Secrets:** dotenv
-* **Version Control:** Git + GitHub
+## 项目结构
 
----
-
-## 📁 Project Structure
-
-```
-whatsapp-ai-microservice/
-├── index.js
-├── package.json
-├── .env.example
-├── .gitignore
+```text
+.
+├── docs/
+│   └── DEPLOYMENT.md
+├── frontend/
+│   └── index.html
 ├── src/
 │   ├── config.js
 │   ├── db.js
+│   ├── logger.js
 │   ├── routes/
 │   │   └── webhook.js
-│   └── services/
-│       ├── ai.js
-│       └── bsp.js
-└── frontend/
-    └── index.html
+│   ├── services/
+│   │   ├── openai.js
+│   │   └── whatsapp.js
+│   └── utils/
+│       └── media.js
+├── test/
+│   └── whatsapp.test.js
+├── .env.example
+├── Dockerfile
+├── index.js
+├── package.json
+└── README.md
 ```
 
----
+## 快速开始
 
-## Environment Variables
-
-Create a `.env` file using the template below:
-
-```
-PORT=3000
-
-# OpenAI
-OPENAI_API_KEY=your_openai_api_key_here
-
-# Meta WhatsApp Cloud API
-META_TOKEN=your_meta_access_token_here
-PHONE_NUMBER_ID=your_phone_number_id_here
-WHATSAPP_BUSINESS_ID=your_business_id_here
-
-# Webhook Verification
-VERIFY_TOKEN=your_custom_verify_token
-```
-
-> Never commit your real `.env` file to GitHub.
-
----
-
-## 🛠️ Installation & Setup
-
-### 1️⃣ Clone the Repository
-
-```bash
-git clone https://github.com/codewithaustin1/whatsapp-ai-microservice.git
-cd whatsapp-ai-microservice
-```
-
-### 2️⃣ Install Dependencies
-
+### 1. 安装依赖
 ```bash
 npm install
 ```
 
-### 3️⃣ Configure Environment Variables
+### 2. 配置环境变量
+```bash
+cp .env.example .env
+```
 
-Create `.env` and insert your credentials.
+### 3. 启动服务
+```bash
+npm start
+```
 
-### 4️⃣ Start the Server
+### 4. 健康检查
+```bash
+curl http://127.0.0.1:3000/healthz
+curl http://127.0.0.1:3000/readyz
+```
+
+## 环境变量
+
+详见 `.env.example`。核心字段如下：
+
+- `OPENAI_API_KEY`：OpenAI API Key
+- `OPENAI_WHISPER_MODEL`：语音识别模型，默认 `whisper-1`
+- `OPENAI_VISION_MODEL`：图片理解模型
+- `OPENAI_SPEECH_MODEL`：文本转语音模型
+- `META_TOKEN`：Meta 访问令牌
+- `PHONE_NUMBER_ID`：WhatsApp 电话号 ID
+- `VERIFY_TOKEN`：Webhook 验证 token
+- `APP_SECRET`：Meta App Secret，用于校验 webhook 签名
+- `ENABLE_AUDIO_REPLY`：是否返回 AI 语音消息
+- `MAX_MEDIA_BYTES`：允许下载的最大媒体大小
+
+## 接口说明
+
+### `GET /healthz`
+用于存活检查。
+
+### `GET /readyz`
+用于就绪检查，会验证数据库是否可初始化。
+
+### `GET /webhook`
+用于 Meta Webhook 验证。
+
+### `POST /webhook`
+用于接收 WhatsApp 消息事件：
+- text：直接交给 OpenAI 文本模型
+- audio：下载媒体后交给 OpenAI Whisper
+- image：下载媒体后交给 OpenAI Vision
+
+## 测试
 
 ```bash
-node index.js
+npm test
+npm run check
 ```
 
-You should see:
+## 生产部署文档
 
-```
-✅ Server running on port 3000
-```
-
----
-
-## 🌍 Exposing Webhook with Ngrok
-
-```bash
-ngrok http 3000
-```
-
-Copy the HTTPS forwarding URL and use it inside the Meta Developer Dashboard.
-
----
-
-## Webhook Verification Endpoint
-
-**GET:**
-
-```
-/webhook?hub.mode=subscribe&hub.verify_token=YOUR_TOKEN&hub.challenge=1234
-```
-
-Expected response: `1234`
-
----
-
-## Incoming Message Handling
-
-When a WhatsApp user sends a message:
-
-1. Meta sends the webhook event
-2. Your server receives it
-3. OpenAI generates a reply
-4. The message is sent back to the user
-
-You should see logs like:
-
-```
-Incoming WhatsApp message: 2547XXXXXXX Hello
-WhatsApp Reply Sent
-```
-
----
-
-## 🧪 Testing
-
-You can test using:
-
-* WhatsApp real messaging
-* Ngrok request inspector at:
-
-```
-http://127.0.0.1:4040
-```
-
----
-
-## ⚠️ Common Issues & Fixes
-
-| Problem               | Cause          | Fix                       |
-| --------------------- | -------------- | ------------------------- |
-| OpenAI quota error    | No balance     | Add billing on OpenAI     |
-| Invalid OAuth token   | Expired token  | Generate a new Meta token |
-| Webhook not verifying | Token mismatch | Match VERIFY_TOKEN        |
-
----
-
-## 📌 Roadmap
-
-* ✅ WhatsApp AI bot
-* ✅ cloud API integration
-* 🔜 User management
-* 🔜 Chat history storage
-* 🔜 SaaS dashboard
-* 🔜 Subscription billing
-
----
-
-👨‍💻 Author
-
-Austin Makachola
-Full-Stack Developer | AI Systems Builder
-GitHub: [https://github.com/codewithaustin1](https://github.com/codewithaustin1)
-
----
-
-## 📄 License
-
-MIT License — Free to use, modify, and distribute.
-
----
-
-> ⭐ If you find this project useful, star the repo and share it!
+完整生产部署步骤见：[`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md)
